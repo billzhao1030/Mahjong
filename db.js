@@ -7,7 +7,9 @@
 const path = require('path');
 const fs = require('fs');
 
-const DATA_DIR = path.join(__dirname, 'data');
+// MJ_DATA_DIR lets tests (and anyone who wants the data elsewhere) point away
+// from the live database.
+const DATA_DIR = process.env.MJ_DATA_DIR || path.join(__dirname, 'data');
 const DB_PATH = path.join(DATA_DIR, 'mahjong.db');
 const JSON_PATH = path.join(DATA_DIR, 'mahjong.json');
 
@@ -182,14 +184,21 @@ function makeSqliteImpl() {
       return { ok: true };
     },
 
-    resetProfile() {
+    /** opts: {career:bool, save:bool} — both default to true (wipe everything) */
+    resetProfile(opts) {
+      opts = opts || {};
+      const career = opts.career !== false;
+      const save = opts.save !== false;
       const ts = now();
-      db.exec('DELETE FROM patterns; DELETE FROM hand_log; DELETE FROM savegame;');
-      db.prepare(
-        `UPDATE profile SET updated_at=?, matches_total=0, matches_won=0, hands_total=0,
-           hands_won=0, hands_lost=0, hands_drawn=0, hands_dealt_in=0, self_draws=0,
-           total_points=0, best_fan=0, best_hand=NULL, best_at=NULL WHERE id = 1`
-      ).run(ts);
+      if (career) {
+        db.exec('DELETE FROM patterns; DELETE FROM hand_log;');
+        db.prepare(
+          `UPDATE profile SET updated_at=?, matches_total=0, matches_won=0, hands_total=0,
+             hands_won=0, hands_lost=0, hands_drawn=0, hands_dealt_in=0, self_draws=0,
+             total_points=0, best_fan=0, best_hand=NULL, best_at=NULL WHERE id = 1`
+        ).run(ts);
+      }
+      if (save) db.exec('DELETE FROM savegame;');
       return this.getProfile();
     }
   };
@@ -258,7 +267,14 @@ function makeJsonImpl() {
     saveGame(slot, state) { store.savegame[slot] = { updatedAt: now(), state }; flush(); return { ok: true }; },
     loadGame(slot) { return store.savegame[slot] || null; },
     clearGame(slot) { delete store.savegame[slot]; flush(); return { ok: true }; },
-    resetProfile() { store = blank(); flush(); return self.getProfile(); }
+    resetProfile(opts) {
+      opts = opts || {};
+      const saved = (opts.save === false) ? store.savegame : {};
+      if (opts.career !== false) { store = blank(); store.savegame = saved; }
+      else if (opts.save !== false) { store.savegame = {}; }
+      flush();
+      return self.getProfile();
+    }
   };
   return self;
 }

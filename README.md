@@ -147,7 +147,7 @@ netstat -ano | findstr :8030
 | 启动时出现 `ExperimentalWarning: SQLite is an experimental feature` | 正常提示，不影响使用。用 Node 24+ 不会出现。 |
 | 控制台打印 `node:sqlite unavailable … falling back to JSON store` | 你的 Node 版本不带内置 SQLite。程序会自动改用 `data/mahjong.json` 存档，**功能完全一致**，无需处理。 |
 | 页面打开是空白 | 确认访问的是 `http://localhost:8030/` 而不是直接双击 `public/index.html`（必须经服务器访问）。 |
-| 想清空所有记录 | 主菜单 →「生涯档案」→「清空档案」；或直接删除 `data/` 文件夹。 |
+| 想清空所有记录 | 主菜单 →「重置游戏」，可选择只清生涯记录或只删存档；或直接删除 `data/` 文件夹。 |
 | macOS 点图标没反应 | 说明 App 被隐私保护挡住了。确认游戏文件夹在 `~/mahjong`（不要放桌面/文稿/下载），日志见 `~/Library/Logs/GuobiaoMahjong.log`。 |
 
 ---
@@ -182,6 +182,8 @@ netstat -ano | findstr :8030
   **每个番种都配一副画出来的示例牌型**：副露的牌组带底色下划线，暗杠两端盖牌，
   和牌张用金框标出。所有示例都经过算番引擎自动校验，确保确实能算出该番种。
 * **规则讲解** — 牌张构成、行牌流程、起胡番数、计分方式、算番五原则、界面操作。
+* **重置游戏** — 主菜单的红色按钮，可分项清空：**生涯档案与历史记录**、**未完成的对局存档**，
+  两项可单独勾选。对话框会先显示当前有多少记录再让你确认，清空后不可恢复。
 * **中 / English** — 右下角（或对局界面右上角）一键切换，选择会被记住。
 
 操作：轮到你时点手牌即可打出。可以吃、碰、杠、胡时，牌桌中央会弹出大按钮面板，
@@ -248,6 +250,12 @@ mahjong/
 * `savegame` — 未打完对局的完整存档（可继续）
 
 若运行环境不支持 `node:sqlite`，会自动改用 `data/mahjong.json`，接口与行为完全相同。
+
+设置环境变量 `MJ_DATA_DIR` 可以把数据存到别处（测试时用它避免动到正式存档）：
+
+```bash
+MJ_DATA_DIR=/tmp/mj-test node server.js
+```
 
 ---
 

@@ -1069,13 +1069,60 @@
 
       var foot = div('');
       var panel;
-      foot.appendChild(button(t('resetProfile'), 'ghost', function () {
-        if (confirm(t('resetConfirm'))) {
-          api('reset', {}).then(function () { panel.close(); lastSave = null; refreshSaveNote(); });
-        }
+      foot.appendChild(button(t('resetProfile'), 'danger', function () {
+        panel.close();
+        showResetDialog();
       }));
       foot.appendChild(button(t('close'), '', function () { panel.close(); }));
       panel = openPanel({ title: t('career'), body: body, foot: foot, cls: 'wide' });
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* reset stored data                                                   */
+  /* ------------------------------------------------------------------ */
+  function showResetDialog() {
+    api('profile').then(function (p) {
+      profile = p;
+      var pick = { career: true, save: true };
+      var body = div('');
+      body.innerHTML = '<p class="reset-warn">' + t('resetWhat') + '</p>';
+
+      function opt(key, nameKey, descKey, current) {
+        var card = div('reset-opt' + (pick[key] ? ' on' : ''));
+        card.innerHTML = '<div class="box">✓</div><div><div class="nm">' + t(nameKey) + '</div>' +
+          '<div class="desc">' + t(descKey) + '</div>' +
+          (current ? '<div class="cur">' + current + '</div>' : '') + '</div>';
+        card.onclick = function () {
+          pick[key] = !pick[key];
+          card.className = 'reset-opt' + (pick[key] ? ' on' : '');
+        };
+        body.appendChild(card);
+      }
+
+      opt('career', 'resetCareer', 'resetCareerD', t('resetCurrent', {
+        hands: p ? p.hands_total : 0,
+        matches: p ? p.matches_total : 0,
+        patterns: p ? (p.patterns || []).length : 0
+      }));
+      opt('save', 'resetSave', 'resetSaveD',
+        (lastSave && lastSave.state)
+          ? t('resetHasSave', { n: (lastSave.state.handNo || 0) + 1 })
+          : t('resetNoSave'));
+
+      var foot = div(''), panel;
+      foot.appendChild(button(t('cancel'), 'ghost', function () { panel.close(); }));
+      foot.appendChild(button(t('resetConfirmBtn'), 'danger', function () {
+        if (!pick.career && !pick.save) { toast(t('resetPick')); return; }
+        api('reset', pick).then(function (np) {
+          if (np) profile = np;
+          if (pick.save) { lastSave = null; game = null; }
+          panel.close();
+          refreshSaveNote();
+          toast(t('resetDone'));
+        });
+      }));
+      panel = openPanel({ title: t('resetTitle'), body: body, foot: foot, cls: 'narrow' });
     });
   }
 
@@ -1093,6 +1140,7 @@
     $('btn-manual').onclick = showManual;
     $('btn-manual2').onclick = showManual;
     $('btn-tutorial').onclick = showTutorial;
+    $('btn-reset').onclick = showResetDialog;
     $('btn-tutorial2').onclick = showTutorial;
     $('btn-lang').onclick = toggleLang;
     $('btn-lang2').onclick = toggleLang;

@@ -71,7 +71,7 @@ async function handleApi(req, res, url) {
         case 'match':       return sendJson(res, 200, db.finishMatch(body));
         case 'savegame':    return sendJson(res, 200, db.saveGame(body.slot || 'default', body.state));
         case 'clearsave':   return sendJson(res, 200, db.clearGame(body.slot || 'default'));
-        case 'reset':       return sendJson(res, 200, db.resetProfile());
+        case 'reset':       return sendJson(res, 200, db.resetProfile(body));
       }
     }
     return sendJson(res, 404, { error: 'no such endpoint: ' + route });
