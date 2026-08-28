@@ -1,0 +1,9 @@
+# 运行时数据（本机的生涯记录与存档，不应进版本库）
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/*.json
+data/*.log
+
+# macOS
+.DS_Store
