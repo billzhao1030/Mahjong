@@ -513,3 +513,181 @@ table.tbl td.num{text-align:right;font-variant-numeric:tabular-nums}
   70%{transform:scale(1) rotate(0);opacity:1}100%{transform:scale(1.04);opacity:0}}
 
 @media (max-width:1100px){ .table{max-height:min(72vh,720px)} .menu-logo h1{font-size:40px} }
+
+/* =====================================================================
+ * 炫彩特效层 / effects layer
+ * Everything here animates transform / opacity / background-position only,
+ * so it stays cheap even with ~90 tiles on screen.
+ * ===================================================================== */
+
+/* ---- drifting aurora behind everything ---- */
+#app{position:relative;z-index:1}
+body::before,body::after{
+  content:'';position:fixed;inset:-25%;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(circle at 28% 30%,rgba(46,206,146,.22),transparent 42%),
+    radial-gradient(circle at 74% 62%,rgba(226,194,116,.18),transparent 44%),
+    radial-gradient(circle at 52% 88%,rgba(126,96,224,.18),transparent 46%);
+  animation:aurora 28s ease-in-out infinite alternate;will-change:transform;
+}
+body::after{
+  background:
+    radial-gradient(circle at 68% 24%,rgba(64,158,224,.16),transparent 44%),
+    radial-gradient(circle at 22% 72%,rgba(220,86,120,.14),transparent 46%);
+  animation-duration:38s;animation-direction:alternate-reverse;
+}
+@keyframes aurora{
+  0%{transform:translate3d(-4%,-3%,0) scale(1.05) rotate(0deg)}
+  50%{transform:translate3d(5%,4%,0) scale(1.2) rotate(7deg)}
+  100%{transform:translate3d(-3%,6%,0) scale(1.1) rotate(-6deg)}
+}
+
+/* ---- screens and panels arrive ---- */
+.screen{animation:screenIn .42s cubic-bezier(.2,.9,.3,1)}
+@keyframes screenIn{from{opacity:0;transform:translateY(14px) scale(.995)}to{opacity:1;transform:none}}
+.overlay{animation:fadeIn .22s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.panel{animation:panelIn .34s cubic-bezier(.2,1.15,.4,1)}
+@keyframes panelIn{from{opacity:0;transform:translateY(24px) scale(.94)}to{opacity:1;transform:none}}
+
+/* ---- title shimmer ---- */
+.menu-logo h1{
+  background:linear-gradient(100deg,#fbeec4 0%,#c9a75a 22%,#fffaea 42%,#c9a75a 62%,#fbeec4 100%);
+  background-size:260% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:shine 7s linear infinite;
+}
+@keyframes shine{from{background-position:260% 0}to{background-position:-260% 0}}
+.menu-logo p{animation:fadeIn 1.2s ease .2s backwards}
+
+/* ---- buttons catch the light ---- */
+.btn{position:relative;overflow:hidden}
+.btn::after{
+  content:'';position:absolute;top:-60%;left:-70%;width:45%;height:220%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.32),transparent);
+  transform:skewX(-22deg);transition:left .55s cubic-bezier(.3,.8,.4,1);pointer-events:none;
+}
+.btn:hover::after{left:130%}
+.btn.primary{background-size:200% 100%;animation:goldflow 5s ease-in-out infinite alternate}
+@keyframes goldflow{from{background-position:0 0}to{background-position:100% 0}}
+
+/* ---- the centre plate spins a highlight ---- */
+.info{position:relative;isolation:isolate;background:none;border:none;box-shadow:none;overflow:hidden}
+.info::before{
+  content:'';position:absolute;inset:-60%;z-index:-2;
+  background:conic-gradient(from 0deg,transparent 0deg,rgba(226,194,116,.85) 40deg,
+             transparent 110deg,transparent 250deg,rgba(90,220,170,.5) 290deg,transparent 340deg);
+  animation:spin 7s linear infinite;will-change:transform;
+}
+.info::after{
+  content:'';position:absolute;inset:1.5px;z-index:-1;border-radius:15px;
+  background:
+    radial-gradient(ellipse at 50% 0%,rgba(226,194,116,.20),transparent 70%),
+    linear-gradient(rgba(6,20,14,.94),rgba(3,12,8,.94));
+  box-shadow:inset 0 0 34px rgba(0,0,0,.55);
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.info .wind-big{animation:windGlow 3.4s ease-in-out infinite}
+@keyframes windGlow{
+  0%,100%{text-shadow:0 3px 14px rgba(0,0,0,.7),0 0 22px rgba(226,194,116,.30)}
+  50%{text-shadow:0 3px 14px rgba(0,0,0,.7),0 0 42px rgba(226,194,116,.75)}
+}
+
+/* ---- whose turn it is ---- */
+.plate{transition:transform .25s ease}
+.plate.turn{animation:platePulse 1.7s ease-in-out infinite;transform:scale(1.06)}
+@keyframes platePulse{
+  0%,100%{box-shadow:0 0 0 1px var(--gold),0 0 16px rgba(226,194,116,.35)}
+  50%{box-shadow:0 0 0 2px var(--gold),0 0 36px rgba(226,194,116,.8)}
+}
+
+/* ---- tiles ---- */
+.my-hand .tile.deal{animation:dealIn .5s cubic-bezier(.2,.95,.3,1) backwards}
+@keyframes dealIn{
+  from{opacity:0;transform:translateY(70px) rotateX(55deg) scale(.9)}
+  to{opacity:1;transform:rotateX(6deg)}
+}
+.dslot.drop{animation:dropIn .4s cubic-bezier(.25,1.35,.45,1)}
+@keyframes dropIn{
+  0%{transform:scale(1.75) translateY(-16px);opacity:0}
+  55%{transform:scale(.95) translateY(0);opacity:1}
+  100%{transform:scale(1)}
+}
+.my-hand .tile.clickable:hover{
+  box-shadow:0 18px 26px rgba(0,0,0,.55),0 0 0 2px var(--gold),0 0 30px rgba(226,194,116,.55),
+             inset 0 1px 0 rgba(255,255,255,.95);
+  filter:brightness(1.06);
+}
+.discards .tile.last{animation:lastGlow 1.8s ease-in-out infinite}
+@keyframes lastGlow{
+  0%,100%{outline-color:rgba(226,194,116,.75)}
+  50%{outline-color:rgba(255,236,178,1)}
+}
+.tile.win-tile{animation:winPulse 1.3s ease-in-out infinite}
+@keyframes winPulse{
+  0%,100%{outline-color:var(--gold);filter:none}
+  50%{outline-color:#fff3cf;filter:brightness(1.12) drop-shadow(0 0 16px rgba(226,194,116,.9))}
+}
+
+/* ---- claim panel ---- */
+.claim-row{animation:panelIn .3s cubic-bezier(.2,1.25,.4,1)}
+.claim-title{animation:panelIn .3s cubic-bezier(.2,1.25,.4,1)}
+.cbtn{position:relative;overflow:hidden}
+.cbtn::after{
+  content:'';position:absolute;top:-60%;left:-70%;width:45%;height:220%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.38),transparent);
+  transform:skewX(-22deg);transition:left .5s ease;pointer-events:none;
+}
+.cbtn:hover::after{left:130%}
+.cbtn.hu{animation:huPulse 1.5s ease-in-out infinite}
+@keyframes huPulse{
+  0%,100%{box-shadow:0 3px 0 #71241c,0 8px 18px rgba(0,0,0,.5),0 0 0 rgba(240,120,100,0)}
+  50%{box-shadow:0 3px 0 #71241c,0 8px 18px rgba(0,0,0,.5),0 0 28px rgba(240,120,100,.85)}
+}
+.cbtn.short{animation:none}
+
+/* ---- big call-out ---- */
+.announce span{
+  background:linear-gradient(96deg,#ffe9a8,#ff9d6c 30%,#ffd76a 55%,#8ef0c4 80%,#ffe9a8);
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 6px 26px rgba(0,0,0,.85)) drop-shadow(0 0 34px rgba(226,194,116,.7));
+  animation:ann .95s ease forwards,shine 2.4s linear infinite;
+}
+.announce::before{
+  content:'';position:absolute;left:50%;top:50%;width:22vmin;height:22vmin;margin:-11vmin 0 0 -11vmin;
+  border-radius:50%;border:3px solid rgba(226,194,116,.85);animation:shockwave .95s ease-out forwards;
+}
+@keyframes shockwave{
+  0%{transform:scale(.2);opacity:0}
+  25%{opacity:.9}
+  100%{transform:scale(3.6);opacity:0}
+}
+
+/* ---- confetti on a win ---- */
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:75;overflow:hidden}
+.confetti i{
+  position:absolute;top:-6vh;width:11px;height:16px;border-radius:2px;display:block;
+  animation:fall linear forwards;
+}
+@keyframes fall{
+  0%{transform:translate3d(0,0,0) rotate(0deg);opacity:1}
+  100%{transform:translate3d(var(--dx,0),112vh,0) rotate(var(--spin,720deg));opacity:.15}
+}
+
+/* ---- result panel lines slide in ---- */
+.fan-lines > *{animation:lineIn .34s cubic-bezier(.2,.9,.3,1) backwards}
+@keyframes lineIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+.score-cell{animation:panelIn .38s cubic-bezier(.2,1.2,.4,1) backwards}
+.win-tiles .tile{animation:dealIn .4s cubic-bezier(.2,.95,.3,1) backwards}
+
+/* ---- chips and toasts ---- */
+.chip{transition:transform .2s ease,box-shadow .2s ease}
+.chip:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.toast{box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 24px rgba(226,194,116,.35)}
+
+/* ---- respect a reduced-motion preference ---- */
+@media (prefers-reduced-motion: reduce){
+  body::before,body::after,.info::before,.menu-logo h1,.btn.primary,
+  .plate.turn,.cbtn.hu,.info .wind-big,.discards .tile.last,.tile.win-tile{animation:none !important}
+  .screen,.panel,.overlay,.claim-row,.claim-title,.my-hand .tile.deal,.dslot.drop,
+  .fan-lines > *,.score-cell,.win-tiles .tile,.announce span{animation-duration:.01ms !important}
+}

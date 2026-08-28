@@ -8,6 +8,7 @@
   var $ = function (id) { return document.getElementById(id); };
 
   var game = null, profile = null, aiTimer = null, lastSave = null;
+  var dealFx = false, lastDropKey = '';
   var SEAT_KEYS = ['you', 'right', 'across', 'left'];
 
   /* ------------------------------------------------------------------ */
@@ -42,6 +43,27 @@
 
   function tilesInline(list) {
     return list.map(function (x) { return '<span class="tile xs"><span class="tile-top">' + Face.svg(x) + '</span></span>'; }).join('');
+  }
+
+  /** a burst of colour when the player wins */
+  function confetti(n) {
+    var box = div('confetti');
+    var colors = ['#e2c274', '#8ef0c4', '#ff9d6c', '#7ec8f0', '#f07ec8', '#fff3cf', '#a48cf0'];
+    for (var i = 0; i < n; i++) {
+      var p = document.createElement('i');
+      p.style.cssText =
+        'left:' + (Math.random() * 100).toFixed(1) + 'vw;' +
+        'background:' + colors[i % colors.length] + ';' +
+        '--dx:' + (Math.random() * 44 - 22).toFixed(1) + 'vw;' +
+        '--spin:' + (360 + Math.random() * 900).toFixed(0) + 'deg;' +
+        'width:' + (7 + Math.random() * 8).toFixed(0) + 'px;' +
+        'height:' + (10 + Math.random() * 12).toFixed(0) + 'px;' +
+        'animation-duration:' + (2.2 + Math.random() * 1.8).toFixed(2) + 's;' +
+        'animation-delay:' + (Math.random() * 0.55).toFixed(2) + 's;';
+      box.appendChild(p);
+    }
+    document.body.appendChild(box);
+    setTimeout(function () { box.remove(); }, 5000);
   }
 
   /* ------------------------------------------------------------------ */
@@ -212,6 +234,7 @@
   /* ------------------------------------------------------------------ */
   function wire(g) {
     g.on(function (ev) {
+      if (ev.type === 'deal') { dealFx = true; lastDropKey = ''; }
       if (ev.type === 'meld') {
         var m = ev.data.type;
         var label = m === 'chi' ? t('chi') : (m === 'peng' ? t('peng') : t('gang'));
@@ -322,12 +345,16 @@
     }
 
     /* discards — each pile is oriented towards its own player, 8 per row */
+    var dropKey = h.lastDiscard
+      ? (h.lastDiscard.seat + ':' + h.discards[h.lastDiscard.seat].length + ':' + h.lastDiscard.tile) : '';
+    var doDrop = !!dropKey && dropKey !== lastDropKey;
+    if (doDrop) lastDropKey = dropKey;
     for (s = 0; s < 4; s++) {
       var dbox = $('disc-' + s); clear(dbox);
       var arr = h.discards[s];
       for (var di = 0; di < arr.length; di++) {
         var isLast = h.lastDiscard && h.lastDiscard.seat === s && di === arr.length - 1;
-        var slot = div('dslot');
+        var slot = div('dslot' + (isLast && doDrop ? ' drop' : ''));
         slot.appendChild(tileEl(arr[di], { cls: isLast ? 'last' : '' }));
         dbox.appendChild(slot);
       }
@@ -361,8 +388,9 @@
       if (idx >= 0) list.splice(idx, 1);
     }
     var canDiscard = h.pending && (h.pending.type === 'discard' || h.pending.type === 'turn');
-    list.forEach(function (x) {
-      var el = tileEl(x, { cls: canDiscard ? 'clickable' : '' });
+    list.forEach(function (x, i) {
+      var el = tileEl(x, { cls: (canDiscard ? 'clickable' : '') + (dealFx ? ' deal' : '') });
+      if (dealFx) el.style.cssText = 'animation-delay:' + (i * 0.04).toFixed(2) + 's';
       if (canDiscard) el.onclick = function () { doDiscard(x); };
       box.appendChild(el);
     });
@@ -371,6 +399,7 @@
       if (canDiscard) d.onclick = function () { doDiscard(drawn); };
       box.appendChild(d);
     }
+    dealFx = false;
   }
 
   function doDiscard(tile) {
@@ -634,9 +663,11 @@
       body.appendChild(tw);
 
       var fl = div('fan-lines');
-      r.fans.forEach(function (f) {
-        fl.appendChild(div('fl-n', (I.getLang() === 'en' ? f.en : f.zh) + (f.n > 1 ? ' ×' + f.n : '')));
-        fl.appendChild(div('fl-v', '+' + f.sub));
+      r.fans.forEach(function (f, i) {
+        var n1 = div('fl-n', (I.getLang() === 'en' ? f.en : f.zh) + (f.n > 1 ? ' ×' + f.n : ''));
+        var v1 = div('fl-v', '+' + f.sub);
+        n1.style.cssText = v1.style.cssText = 'animation-delay:' + (0.06 * i + 0.15).toFixed(2) + 's';
+        fl.appendChild(n1); fl.appendChild(v1);
       });
       fl.appendChild(div('fl-n tot', t('fanTotal', { n: r.fan })));
       fl.appendChild(div('fl-v tot', r.fan));
@@ -651,6 +682,7 @@
     var row = div('score-row');
     for (var s = 0; s < 4; s++) {
       var c = div('score-cell' + (s === 0 ? ' me' : ''));
+      c.style.cssText = 'animation-delay:' + (0.08 * s + 0.2).toFixed(2) + 's';
       var d = r.delta[s];
       c.innerHTML = '<div class="n">' + windName(game.seatWind(s)) + ' ' + seatName(s) + '</div>' +
         '<div class="d ' + (d > 0 ? 'pos' : (d < 0 ? 'neg' : '')) + '">' + (d > 0 ? '+' : '') + d + '</div>' +
@@ -660,6 +692,7 @@
     body.appendChild(row);
 
     var foot = div('');
+    if (r.type === 'win' && r.winner === 0) confetti(90);
     var panel;
     var isLast = game.handNo >= 15;
     foot.appendChild(button(isLast ? t('matchEnd') : t('nextHand'), 'primary', function () {
@@ -708,6 +741,7 @@
     wrap.appendChild(tbl);
     body.appendChild(wrap);
 
+    if (myRank === 1) confetti(150);
     var foot = div('');
     var panel;
     foot.appendChild(button(t('backToMenu'), 'primary', function () { panel.close(); game = null; showMenu(); }));
