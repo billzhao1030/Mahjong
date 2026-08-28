@@ -48,7 +48,7 @@
       turn: this.dealer(), phase: PHASE.DEAL,
       lastDiscard: null, drawn: null, afterKong: false, kongCount: 0,
       pending: null, claim: null, log: [], winner: null, result: null,
-      robbing: null
+      robbing: null, shortHu: null
     };
     var i, s;
     for (i = 0; i < 13; i++) for (s = 0; s < 4; s++) h.hands[s].push(wall[h.front++]);
@@ -283,7 +283,9 @@
       selfDrawn: true, fromHand: true,
       lastTileDraw: h.lastDrawWasLast, afterKong: afterKong
     });
+    h.shortHu = null;
     if (win && win.legal) actions.push({ kind: 'hu', result: win });
+    else if (win && seat === 0) h.shortHu = { tile: tile, fan: win.baseTotal, need: this.minFan };
     var kongs = this.kongOptions(seat);
     for (var i = 0; i < kongs.length; i++) {
       if (this.wallLeft() > 0) actions.push({ kind: kongs[i].kind, tile: kongs[i].tile, meldIndex: kongs[i].meldIndex });
@@ -321,6 +323,7 @@
     h.drawn = null;
     h.pending = null;
     h.turnActions = null;
+    h.shortHu = null;
     this.emit('discard', { seat: seat, tile: tile });
     h.phase = PHASE.CLAIM;
     h.claim = null;
@@ -415,6 +418,14 @@
       h.claim = { all: all, humanDone: false, humanChoice: null };
       var humanEntry = null;
       for (var i = 0; i < all.length; i++) if (all[i].seat === 0) humanEntry = all[i];
+      /* would this discard have completed the human's hand, but for the minimum?
+         never block on it — just tell the player what happened */
+      if (h.lastDiscard.seat !== 0) {
+        var probe = this.evaluateWin(0, h.lastDiscard.tile, {});
+        if (probe && !probe.legal) {
+          this.emit('shorthu', { tile: h.lastDiscard.tile, fan: probe.baseTotal, need: this.minFan });
+        }
+      }
       if (humanEntry) {
         h.pending = { type: 'claim', seat: 0, options: humanEntry.options, tile: h.lastDiscard.tile, from: h.lastDiscard.seat };
         this.emit('prompt', h.pending);

@@ -218,6 +218,10 @@
         if (ev.data.seat !== 0) announce(label);
       }
       if (ev.type === 'flower' && ev.data.seat === 0) toast(t('flowers') + ' ' + T.tileName(ev.data.tile, I.getLang()));
+      if (ev.type === 'shorthu') {
+        toast(T.tileName(ev.data.tile, I.getLang()) + ' · ' + t('canWinBut') + ' (' +
+              t('shortFan', { n: Math.max(1, ev.data.need - ev.data.fan) }) + ')');
+      }
     });
   }
 
@@ -329,6 +333,12 @@
       }
     }
 
+    /* keep the discard piles inside the table as they grow */
+    var maxPile = 0;
+    for (s = 0; s < 4; s++) maxPile = Math.max(maxPile, h.discards[s].length);
+    var rows = Math.min(4, Math.max(1, Math.ceil(maxPile / 8)));
+    $('table').className = 'table' + (rows >= 3 ? ' rows-' + rows : '');
+
     /* centre */
     $('info').innerHTML =
       '<div class="wind-big">' + windName(game.roundWind()) + '</div>' +
@@ -389,11 +399,29 @@
     return b;
   }
 
+  function shortHuBtn(sh) {
+    var b = cbtn('hu short', t('hu'), [sh.tile], sh.tile,
+      t('shortFan', { n: Math.max(1, sh.need - sh.fan) }), null);
+    b.disabled = true;
+    b.title = t('canWinBut');
+    return b;
+  }
+
   function renderActions() {
     var h = game.h, box = $('actions'); clear(box);
     if (!h.pending) return;
     var p = h.pending, row = div('claim-row'), title;
 
+    /* drew a winning tile that cannot be declared — say so instead of showing nothing */
+    if (p.type === 'discard' && h.shortHu) {
+      var t2 = div('claim-title');
+      var l2 = div(''); l2.textContent = t('canWinBut');
+      t2.appendChild(l2);
+      box.appendChild(t2);
+      row.appendChild(shortHuBtn(h.shortHu));
+      box.appendChild(row);
+      return;
+    }
     if (p.type === 'turn') {
       title = div('claim-title');
       title.innerHTML = t('yourTurn');
@@ -411,6 +439,7 @@
             }));
         }
       });
+      if (h.shortHu) row.appendChild(shortHuBtn(h.shortHu));
       row.appendChild(cbtn('pass', t('pass'), null, null, null, function () { game.input({ kind: 'pass' }); render(); }));
       box.appendChild(row);
       return;
@@ -472,9 +501,64 @@
     var sh = H.shanten(hand, h.melds[0]);
     if (sh <= 0) {
       var ws = bestWaits(hand, h.melds[0]);
-      if (ws.length) { el.innerHTML = '<b>' + t('tenpai') + '</b> · ' + t('readyHint', { tiles: tilesInline(ws) }); return; }
+      if (ws.length) {
+        el.innerHTML = '<b>' + t('tenpai') + '</b> ' + waitFanInline(hand, h.melds[0]);
+        return;
+      }
     }
     el.innerHTML = sh > 0 ? t('shantenN', { n: sh }) : t('discardPrompt');
+  }
+
+  /** the readiness line: which discard to make, and what each wait is worth */
+  var _hintKey = '', _hintVal = '';
+  function waitFanInline(hand, melds) {
+    var key = hand.join(',') + '|' + melds.length + '|' + game.h.discards[0].length + '|' + I.getLang();
+    if (_hintKey === key) return _hintVal;
+    var need = 14 - 3 * melds.length, opts = [], i, j;
+
+    if (hand.length === need) {                 // holding 14: rank the discards
+      var seen = {};
+      for (i = 0; i < hand.length; i++) {
+        if (seen[hand[i]]) continue;
+        seen[hand[i]] = 1;
+        var rest = hand.slice();
+        rest.splice(rest.indexOf(hand[i]), 1);
+        var w = T.sortTiles(H.waits(rest, melds));
+        if (w.length) opts.push({ discard: hand[i], hand: rest, waits: w });
+      }
+    } else {
+      var w2 = T.sortTiles(H.waits(hand, melds));
+      if (w2.length) opts.push({ discard: null, hand: hand.slice(), waits: w2 });
+    }
+    if (!opts.length) { _hintKey = key; _hintVal = ''; return ''; }
+
+    /* pick the discard whose waits are worth the most and can actually be declared */
+    var best = null;
+    for (i = 0; i < opts.length; i++) {
+      var o = opts[i], value = 0, ok = 0, info = [];
+      for (j = 0; j < o.waits.length; j++) {
+        var f = previewFan(o.hand, melds, o.waits[j], false);
+        info.push({ tile: o.waits[j], f: f });
+        if (f && f.ok) { ok++; value += f.total; }
+      }
+      var sc = ok * 1000 + value;
+      if (!best || sc > best.sc) best = { sc: sc, opt: o, info: info };
+    }
+
+    var html = '';
+    if (best.opt.discard !== null) {
+      html += '<span class="wd">' + t('discardTo') + tilesInline([best.opt.discard]) + '→</span>';
+    }
+    for (i = 0; i < best.info.length && i < 5; i++) {
+      var it = best.info[i];
+      var tag = it.f ? (it.f.ok ? '<b>' + it.f.total + t('fanValue') + '</b>'
+                                : '<i>' + t('shortFan', { n: Math.max(1, game.minFan - it.f.base) }) + '</i>')
+                     : '';
+      html += '<span class="wf">' + tilesInline([it.tile]) + tag + '</span>';
+    }
+    _hintKey = key;
+    _hintVal = html;
+    return html;
   }
 
   /** waits reachable from the current 14-tile hand after the best discard */
@@ -1026,4 +1110,5 @@
   else boot();
 
   global.MJ.UI = { render: render, showMenu: showMenu };
+  Object.defineProperty(global.MJ, '__game', { get: function () { return game; } });  // test hook
 })(typeof window !== 'undefined' ? window : globalThis);
